@@ -7,35 +7,19 @@ def initialize_trackers(frame, detections):
     trackers = []
     for det in detections:
         tracker = create_tracker()
-        tracker.init(frame, tuple(det))
-        trackers.append(tracker)
+        bbox = (int(det[0]), int(det[1]), int(det[2] - det[0]), int(det[3] - det[1]))  # Converting to (x, y, w, h) and ensuring integers
+        tracker.init(frame, bbox)
+        trackers.append({'tracker': tracker, 'bbox': bbox})
     return trackers
 
 def update_trackers(frame, trackers):
     new_detections = []
-    for tracker in trackers:
+    updated_trackers = []
+    for tracker_info in trackers:
+        tracker = tracker_info['tracker']
         success, box = tracker.update(frame)
         if success:
+            box = list(map(int, box))
             new_detections.append(box)
-    return new_detections
-
-# Usage in main loop
-trackers = initialize_trackers(first_frame, initial_detections)
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-    
-    tracked_players = update_trackers(frame, trackers)
-    
-    # Draw tracked players on frame
-    for player in tracked_players:
-        x, y, w, h = [int(v) for v in player]
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-    
-    cv2.imshow('Tracked Players', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+            updated_trackers.append({'tracker': tracker, 'bbox': box})
+    return new_detections, updated_trackers
